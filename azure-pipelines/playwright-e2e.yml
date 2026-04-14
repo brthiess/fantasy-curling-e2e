@@ -1,0 +1,64 @@
+trigger:
+  branches:
+    include:
+      - main
+      - develop
+
+pr:
+  branches:
+    include:
+      - "*"
+
+pool:
+  vmImage: ubuntu-latest
+
+variables:
+  NODE_VERSION: "20.x"
+  CI: "true"
+  TZ: "UTC"
+
+steps:
+  - checkout: self
+    clean: true
+
+  - task: NodeTool@0
+    inputs:
+      versionSpec: "$(NODE_VERSION)"
+    displayName: Use Node.js $(NODE_VERSION)
+
+  - script: npm ci
+    displayName: Install E2E dependencies
+
+  - script: npx playwright install --with-deps chromium
+    displayName: Install Playwright browser
+
+  - script: npm run test:e2e:ci
+    displayName: Run smoke E2E suite
+    env:
+      BACKEND_DIR: $(Build.SourcesDirectory)/../fantasy-curling-backend
+      FRONTEND_DIR: $(Build.SourcesDirectory)/../fantasy-curling-frontend
+      FRONTEND_URL: http://localhost:5173
+      BACKEND_URL: http://localhost:3000
+      FRONTEND_START_COMMAND: npm run dev -- --mode devlocal
+      BACKEND_START_COMMAND: npm run start:dev
+      VITE_SUPABASE_URL: $(VITE_SUPABASE_URL)
+      VITE_SUPABASE_ANON_KEY: $(VITE_SUPABASE_ANON_KEY)
+      VITE_API_ENV: devlocal
+      E2E_USER_EMAIL: test@example.com
+      E2E_USER_PASSWORD: Password123!
+
+  - task: PublishPipelineArtifact@1
+    displayName: Publish Playwright HTML report
+    condition: succeededOrFailed()
+    inputs:
+      targetPath: playwright-report
+      artifactName: playwright-report
+      publishLocation: pipeline
+
+  - task: PublishPipelineArtifact@1
+    displayName: Publish raw test artifacts
+    condition: succeededOrFailed()
+    inputs:
+      targetPath: test-results
+      artifactName: test-results
+      publishLocation: pipeline

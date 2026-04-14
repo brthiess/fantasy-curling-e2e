@@ -1,0 +1,29 @@
+{
+  "name": "fantasy-curling-e2e",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Standalone Playwright E2E suite for fantasy curling platform",
+  "scripts": {
+    "test:e2e": "playwright test",
+    "test:e2e:headed": "playwright test --headed",
+    "test:e2e:debug": "playwright test --debug",
+    "test:e2e:ui": "playwright test --ui",
+    "test:e2e:smoke": "playwright test tests/e2e/smoke.spec.ts",
+    "test:e2e:ci": "playwright test tests/e2e/smoke.spec.ts --reporter=list,html",
+    "typecheck": "tsc --noEmit",
+    "show-report": "playwright show-report",
+    "trace:open": "playwright show-trace"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.53.0",
+    "@types/node": "^22.15.2",
+    "dotenv": "^16.5.0",
+    "mongodb": "^6.16.0",
+    "testcontainers": "^11.0.2",
+    "tsx": "^4.19.3",
+    "typescript": "^5.8.3"
+  }
+}
