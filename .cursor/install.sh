@@ -136,8 +136,11 @@ BACKEND_URL=http://localhost:3000
 BACKEND_START_COMMAND=npm run start:dev
 NODE_ENV=test
 
-# Docker/Testcontainers is unavailable in Cloud Agent VMs, so use the local mongod.
-MONGO_URL=mongodb://localhost:27017
+# The E2E harness seeds and RESETS collections, so it always targets a local mongod
+# via E2E_MONGO_URL and never the app's real MONGO_URL (e.g. an injected Atlas URL).
+# Docker/Testcontainers is unavailable in Cloud Agent VMs, so this local mongod is
+# started by .cursor/start.sh.
+E2E_MONGO_URL=mongodb://localhost:27017
 
 # Keep SUPABASE_PROJECT_ID unset to force deterministic local JWT mode in backend
 

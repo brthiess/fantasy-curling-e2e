@@ -59,9 +59,26 @@ export default async function globalSetup(_config: FullConfig): Promise<void> {
 
   fs.mkdirSync(runtimeDirectory, { recursive: true });
 
-  const externalMongoUrl = readOptionalEnv(process.env, "MONGO_URL");
+  // Safety guard: this harness SEEDS and RESETS collections, so it must never run
+  // against a shared/remote database. It uses a dedicated, local-by-default
+  // E2E_MONGO_URL and deliberately ignores the ambient MONGO_URL that the app uses
+  // for real databases (e.g. an injected MongoDB Atlas connection string). Seeding
+  // a non-local host requires an explicit E2E_ALLOW_REMOTE_SEED opt-in.
+  const seedMongoUrl =
+    readOptionalEnv(process.env, "E2E_MONGO_URL") ?? "mongodb://localhost:27017";
+  const seedHostIsLocal = /(?:\/\/|@)(?:localhost|127\.0\.0\.1)(?::\d+)?(?:\/|\?|$)/.test(
+    seedMongoUrl
+  );
+  if (!seedHostIsLocal && !readOptionalEnv(process.env, "E2E_ALLOW_REMOTE_SEED")) {
+    throw new Error(
+      `Refusing to seed a non-local MongoDB (${seedMongoUrl}). The E2E harness ` +
+        `resets collections, so it only targets a local mongod by default. Set ` +
+        `E2E_MONGO_URL to a localhost URL, or set E2E_ALLOW_REMOTE_SEED=1 to override.`
+    );
+  }
+
   const mongoRuntime = await startIsolatedMongoContainer({
-    externalMongoUrl
+    externalMongoUrl: seedMongoUrl
   });
   const { mongoUrl } = mongoRuntime;
 
