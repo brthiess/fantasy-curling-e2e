@@ -1,0 +1,7 @@
+{
+  "name": "Fantasy Curling Platform",
+  "user": "ubuntu",
+  "install": "bash .cursor/install.sh",
+  "start": "bash .cursor/start.sh",
+  "ports": [3000, 5173, 3001, 27017]
+}
