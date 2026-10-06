@@ -25,6 +25,7 @@ async function mockServices(page: Page, career: CareerDto = careerFixture()) {
     totalNumberOfPicksToMake: 1, tournamentStatus: "COMPLETE", tournamentStatusMessage: "Complete",
     tournamentRegistrationStatus: "CLOSED", tournamentRegistrationStatusMessage: "Closed",
     currentUserTournamentData: tournamentData, typeMessage: "Weighted Wins", hasPools: false,
+    insights: { eligibleEntryCount: 10, scoreSnapshotAt: "2026-10-06T12:00:00Z", teams: [{ teamId: "team1", fantasyPoints: 42, pickCount: 1, ownershipPercentage: 10 }] },
     rulesShort: "", rulesLong: "",
     users: [{ ...career.user, currentUserTournamentData: tournamentData }],
     teams: [{ id: "team1", name: "Team Example", skipName: "Example Skip", gender: 0,
@@ -74,11 +75,16 @@ for (const width of [320, 375, 390, 768, 1024, 1440]) {
     await page.setViewportSize({ width, height: 900 });
     await page.goto("/users/iceking");
     await expect(page.getByRole("heading", { name: "Ice Kings", exact: true })).toBeVisible();
+    await expect(page.locator("main")).not.toContainText("Calculated");
+    await expect(page.locator("main")).not.toContainText("Corrected scores");
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
     await page.screenshot({ path: testInfo.outputPath(`career-${width}.png`), fullPage: true });
     await page.getByRole("link", { name: "View recap →", exact: true }).click();
     const recap = page.getByRole("region", { name: "Tournament recap" });
     await expect(recap).toContainText("Ice Kings finished 1st");
+    await expect(recap).not.toContainText("Calculated");
+    await expect(recap).not.toContainText("Shared finishes use complete, valid entries");
+    await expect(recap.locator("li [aria-hidden='true']")).toHaveCount(3);
     await expect.poll(async () => Math.round((await recap.boundingBox())?.y ?? -1)).toBe(96);
     await page.screenshot({ path: testInfo.outputPath(`recap-viewport-${width}.png`) });
     await expect(page.getByText("@iceking", { exact: true })).toBeVisible();
@@ -137,5 +143,21 @@ test("anonymous public profile and recap fit desktop and mobile", async ({ page 
   // Direct shared links must also work on a fresh page load.
   await page.reload();
   await expect(recap).toContainText("Ice Kings finished 1st");
+  expect(errors).toEqual([]);
+});
+
+for (const width of [320, 375, 390, 768, 1024, 1440]) test(`all earned trophy icons at ${width}px`, async ({ page }, info) => {
+  const career = careerFixture(); career.results[0].earnedTrophyIds = career.trophies.map(t => t.id);
+  career.trophies.forEach(t => { t.earnedDate = career.results[0].endDate; t.tournamentId = "t1"; t.progress = t.target; });
+  await mockServices(page, career); const errors: string[] = [];
+  page.on('pageerror', e => errors.push(e.message)); page.on('console', m => { if (m.type() === 'error') errors.push(m.text()); });
+  await page.setViewportSize({width,height:900}); await page.goto('/users/iceking/tournaments/t1#recap');
+  const recap = page.getByRole('region',{name:'Tournament recap'});
+  await expect(recap.getByRole('heading',{name:'Trophies earned'})).toBeVisible();
+  const icons = recap.locator('li .material-symbols-outlined');
+  await expect(icons).toHaveCount(6); expect(new Set(await icons.allTextContents()).size).toBe(6);
+  await page.evaluate(() => document.fonts.ready);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  await page.screenshot({path:info.outputPath(`trophy-icons-${width}.png`),fullPage:true});
   expect(errors).toEqual([]);
 });
