@@ -25,7 +25,7 @@ export async function seedMongoDatabase(mongoUrl: string): Promise<void> {
     {
       _id: seedIds.teams.gushue,
       name: "Team Gushue",
-      skipName: "Gushue",
+      countryCode: "CA",
       pointsPerWin: 1.4,
       wins: 3,
       pool: "A"
@@ -33,7 +33,7 @@ export async function seedMongoDatabase(mongoUrl: string): Promise<void> {
     {
       _id: seedIds.teams.bottcher,
       name: "Team Bottcher",
-      skipName: "Bottcher",
+      countryCode: "CA",
       pointsPerWin: 1.2,
       wins: 4,
       pool: "A"
@@ -41,7 +41,7 @@ export async function seedMongoDatabase(mongoUrl: string): Promise<void> {
     {
       _id: seedIds.teams.dunstone,
       name: "Team Dunstone",
-      skipName: "Dunstone",
+      countryCode: "CA",
       pointsPerWin: 1.3,
       wins: 2,
       pool: "B"
@@ -49,7 +49,7 @@ export async function seedMongoDatabase(mongoUrl: string): Promise<void> {
     {
       _id: seedIds.teams.koe,
       name: "Team Koe",
-      skipName: "Koe",
+      countryCode: "CA",
       pointsPerWin: 1.1,
       wins: 5,
       pool: "B"
@@ -57,7 +57,7 @@ export async function seedMongoDatabase(mongoUrl: string): Promise<void> {
     {
       _id: seedIds.teams.jacobs,
       name: "Team Jacobs",
-      skipName: "Jacobs",
+      countryCode: "CA",
       pointsPerWin: 1.15,
       wins: 4,
       pool: "A"
@@ -65,7 +65,7 @@ export async function seedMongoDatabase(mongoUrl: string): Promise<void> {
     {
       _id: seedIds.teams.mcEwen,
       name: "Team McEwen",
-      skipName: "McEwen",
+      countryCode: "CA",
       pointsPerWin: 1.05,
       wins: 3,
       pool: "B"
@@ -73,7 +73,7 @@ export async function seedMongoDatabase(mongoUrl: string): Promise<void> {
     {
       _id: seedIds.teams.carruthers,
       name: "Team Carruthers",
-      skipName: "Carruthers",
+      countryCode: "CA",
       pointsPerWin: 0.95,
       wins: 2,
       pool: "A"
@@ -81,7 +81,7 @@ export async function seedMongoDatabase(mongoUrl: string): Promise<void> {
     {
       _id: seedIds.teams.eddin,
       name: "Team Edin",
-      skipName: "Edin",
+      countryCode: "SE",
       pointsPerWin: 1.0,
       wins: 1,
       pool: "B"

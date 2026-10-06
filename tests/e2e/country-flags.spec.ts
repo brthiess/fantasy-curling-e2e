@@ -1,7 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 import { tournamentInsightsFixture } from "../../../fantasy-curling-frontend/src/test/insights-fixture";
 
-async function setup(page: Page, signedIn: boolean, editable = false) {
+async function setup(page: Page, signedIn: boolean, editable = false, regional = false) {
   await page.clock.install({ time: new Date("2026-10-06T12:00:00Z") });
   const tournaments = tournamentInsightsFixture();
   // Synthetic countries exercise display contracts; these are not backfill data.
@@ -12,6 +12,13 @@ async function setup(page: Page, signedIn: boolean, editable = false) {
     Object.assign(tournament.users[0], { teamName: "Ice Kings", accountInitial: "I", backgroundColor: "blue", joinDate: "2023-01-01", profilePicture: null, isProfilePictureEnabled: false });
   }
   tournaments[2].teams = tournaments[2].teams.map((team, i) => ({ ...team, countryCode: ["GB-ENG", "GB-WLS", "GB-SCT", undefined][i] }));
+  if (regional) {
+    for (const tournament of tournaments) tournament.teams.forEach((team, i) => {
+      team.name = ["Dunstone", "Hasselborg", "McCarville", "Unverified"][i];
+      team.countryCode = ["CA-AB", "SE", "CA-ON-N", undefined][i];
+      Object.assign(team, { skipName: "Legacy duplicate must disappear" });
+    });
+  }
   if (editable) {
     tournaments[0].pickDeadline = new Date("2026-10-13T00:00:00Z");
     tournaments[0].startDate = new Date("2026-10-13T00:00:00Z");
@@ -47,11 +54,13 @@ async function capture(page: Page, path: string, fullPage = true) {
 async function checkFlags(page: Page) {
   await expect.poll(() => page.locator(".team-flag img:visible").count()).toBeGreaterThan(0);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
-  const dimensions = await page.locator(".team-flag img:visible").evaluateAll(images => images.map(image => {
-    const img = image as HTMLImageElement, rect = img.getBoundingClientRect();
-    return { loaded: img.complete && img.naturalWidth > 0, ratio: rect.width / rect.height, alt: img.alt };
-  }));
-  expect(dimensions.every(img => img.loaded && Math.abs(img.ratio - 4 / 3) < .01 && img.alt)).toBe(true);
+  await expect.poll(async () => {
+    const dimensions = await page.locator(".team-flag img:visible").evaluateAll(images => images.map(image => {
+      const img = image as HTMLImageElement, rect = img.getBoundingClientRect();
+      return { loaded: img.complete && img.naturalWidth > 0, ratio: rect.width / rect.height, alt: img.alt };
+    }));
+    return dimensions.length > 0 && dimensions.every(img => img.loaded && Math.abs(img.ratio - 4 / 3) < .01 && img.alt);
+  }).toBe(true);
 }
 
 for (const width of [320, 390, 768, 1440]) {
@@ -115,3 +124,44 @@ test("broken flag asset retains initials in draft board", async ({ page }) => {
   await page.goto("/my-picks/weighted-wins/active");
   await expect(page.getByTestId("draft-board-team").filter({ hasText: "Brown" }).locator(".team-flag")).toHaveText("TB");
 });
+
+for (const width of [390, 1440]) {
+  test(`Canonical names and regional associations ${width}px`, async ({ page }, info) => {
+    const errors = await setup(page, true, true, true);
+    await page.setViewportSize({ width, height: 900 });
+    await page.goto("/stats?tournamentId=active");
+    const overview = page.getByRole("article", { name: "Tournament overview chart" });
+    await expect(overview).toContainText("Dunstone · Alberta");
+    await expect(overview).toContainText("McCarville · Northern Ontario");
+    await expect(overview).not.toContainText("Legacy duplicate");
+    await expect(overview).not.toContainText("Unverified ·");
+    await expect(overview.locator('img[alt="Alberta"]')).toHaveAttribute("src", "/flags/ca-ab.svg");
+    await expect(overview.locator('img[alt="Northern Ontario"]')).toHaveAttribute("src", "/flags/ca-on.svg");
+    await checkFlags(page);
+    await page.getByLabel("Search Teams").fill("northern ontario");
+    const comparison = page.getByRole("region", { name: "Team performance" });
+    await expect(comparison).toContainText("McCarville · Northern Ontario");
+    await expect(comparison).not.toContainText("Dunstone");
+    await capture(page, info.outputPath(`regional-stats-${width}.png`));
+    await page.goto("/users/iceking/tournaments/active");
+    const roster = page.getByRole("region", { name: "Pick roster chart" });
+    await expect(roster).toContainText("McCarville · Northern Ontario");
+    await expect(roster).not.toContainText("Legacy duplicate");
+    await checkFlags(page);
+    await capture(page, info.outputPath(`regional-user-${width}.png`));
+    await page.goto("/my-picks/weighted-wins/active");
+    await expect(page.getByRole("heading", { name: "My Roster" })).toBeVisible();
+    await expect(page.locator("body")).not.toContainText("Legacy duplicate");
+    await page.getByTestId("remove-pick").nth(1).click();
+    if (width < 1024) await page.getByTestId("choose-team-slot").click();
+    const board = page.locator(".draft-board-panel");
+    await board.locator('input[type="text"], input[type="search"]').fill("northern ontario");
+    await expect(board.getByTestId("draft-board-team")).toHaveCount(1);
+    await expect(board.getByTestId("draft-board-team")).toContainText("McCarville");
+    await expect(board.getByTestId("draft-board-team")).toContainText("Northern Ontario");
+    await expect(board).not.toContainText("Legacy duplicate");
+    await checkFlags(page);
+    await capture(page, info.outputPath(`regional-picks-${width}.png`), width >= 1024);
+    expect(errors).toEqual([]);
+  });
+}
