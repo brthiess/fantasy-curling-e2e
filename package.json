@@ -4,6 +4,7 @@
   "private": true,
   "description": "Standalone Playwright E2E suite for fantasy curling platform",
   "scripts": {
+    "test:e2e:stats": "playwright test --config playwright.stats.config.ts",
     "test:e2e:career": "playwright test --config playwright.career.config.ts",
     "test:e2e": "playwright test",
     "test:e2e:headed": "playwright test --headed",

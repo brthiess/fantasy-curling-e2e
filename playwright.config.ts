@@ -7,7 +7,7 @@ const frontendUrl = process.env.FRONTEND_URL ?? "http://localhost:5173";
 
 export default defineConfig({
   testDir: "./tests/e2e",
-  testIgnore: "**/career-flow.spec.ts",
+  testIgnore: ["**/career-flow.spec.ts", "**/stats-flow.spec.ts"],
   globalSetup: "./scripts/global-setup.ts",
   globalTeardown: "./scripts/global-teardown.ts",
   timeout: 60_000,
