@@ -5,10 +5,16 @@ import { tournamentInsightsFixture as fixture } from "../../../fantasy-curling-f
 async function setup(page: Page, signedIn = false, tournaments = fixture()) {
   await page.clock.install({ time: new Date("2026-10-06T12:00:00Z") });
   const errors: string[] = []; page.on("pageerror", error => errors.push(error.message));
+  page.on("console", message => { if (message.type() === "error") errors.push(message.text()); });
   await page.route("**/api/current-user", route => route.fulfill({ json: { success: true, signedIn, user: {
     id: signedIn ? "user1" : "", username: signedIn ? "iceking" : "", teamName: "Ice Kings", accountInitial: "I", totalPoints: 17,
     backgroundColor: "blue", globalRank: 1, profilePicture: null, isProfilePictureEnabled: false, joinDate: "2023-01-01", tournaments, leaderboards: [],
   } } }));
+  for (const t of tournaments) for (const user of t.users) Object.assign(user, {
+    teamName: "Northern Alberta Championship Fantasy Curling Club", accountInitial: "I", backgroundColor: "blue",
+    joinDate: "2023-01-01", profilePicture: null, isProfilePictureEnabled: false,
+  });
+  await page.route("**/api/users/*/career", route => route.fulfill({ json: { user: { id: "user1", username: "iceking", teamName: "Ice Kings" }, results: [], trophies: [], calculatedAt: "2026-10-06T12:00:00Z" } }));
   return errors;
 }
 for (const signedIn of [false, true]) for (const width of [320, 375, 390, 768, 1024, 1440]) {
@@ -19,7 +25,7 @@ for (const signedIn of [false, true]) for (const width of [320, 375, 390, 768, 1
     await expect(page.getByLabel("Tournament", { exact: true })).toHaveValue("active");
     await expect(page).toHaveURL(/tournamentId=active/);
     await expect(page.getByText("Percentage of 10 eligible entries", { exact: false })).toBeVisible();
-    await expect(page.getByRole("table")).toHaveCount(width >= 1024 ? 1 : 0);
+    await expect(page.getByRole("table")).toHaveCount(0);
     await expect(page.getByRole("heading", { name: "Fantasy points vs. ownership", exact: true })).toBeVisible();
     await expect(page.getByRole("region", { name: "Tournament charts" }).getByRole("button")).toHaveCount(3);
     await expect(page.getByRole("article", { name: "Your Picks contribution chart" })).toHaveCount(signedIn ? 1 : 0);
@@ -38,11 +44,11 @@ test("combined filters, sorting, contributions, selector and history", async ({ 
   await page.getByLabel("My Picks only").check(); await expect(page.getByText("Showing 2 of 4 Teams")).toBeVisible();
   await page.getByLabel("Search Teams").fill("  brown  "); await expect(page.getByText("Showing 1 of 4 Teams")).toBeVisible();
   await expect(firstScoreBar).toHaveAttribute('width','100');
-  await expect(page.getByText("Your contribution: 8.5 pts", { exact: false })).toBeVisible();
+  await expect(page.getByRole("list", { name: "Team comparison" })).not.toContainText("Your contribution");
   await expect(page.getByRole("heading", { name: "Your Tournament total: 17 pts" })).toBeVisible();
   await page.getByLabel("Pool", { exact: true }).selectOption("B"); await expect(page.getByText("No Teams match your filters.", { exact: false })).toBeVisible();
   await page.getByRole("button", { name: "Clear filters" }).click();
-  await page.getByLabel("Sort by").selectOption("pickCount"); await page.getByRole("button", { name: "Descending" }).click();
+  await page.getByLabel("Compare by").selectOption("pickCount"); await page.getByRole("button", { name: "Descending" }).click();
   await page.getByLabel("Tournament", { exact: true }).selectOption("upcoming");
   await expect(page.getByText("Ownership", { exact: false }).filter({ hasText: "Provisional" }).last()).toBeVisible();
   await expect(page).toHaveURL(/extra=kept/);
@@ -50,10 +56,10 @@ test("combined filters, sorting, contributions, selector and history", async ({ 
   await page.goBack(); await expect(page.getByLabel("Tournament", { exact: true })).toHaveValue("active");
   await expect(page.getByLabel("Search Teams")).toHaveValue("");
   await page.setViewportSize({ width: 1024, height: 900 });
-  await page.getByRole("button", { name: "Wins", exact: true }).click();
-  await expect(page.getByRole("columnheader", { name: /Wins/ })).toHaveAttribute("aria-sort", "descending");
-  await page.getByRole("button", { name: /Wins/ }).click();
-  await expect(page.getByRole("columnheader", { name: /Wins/ })).toHaveAttribute("aria-sort", "ascending");
+  await page.getByLabel("Compare by").selectOption("winValue");
+  await expect(page.getByRole("status").filter({ hasText: "Sorted by Wins" })).toContainText("descending");
+  await page.getByRole("button", { name: "Descending", exact: true }).click();
+  await expect(page.getByRole("status").filter({ hasText: "Sorted by Wins" })).toContainText("ascending");
 });
 for (const width of [320, 1440]) test(`loading, retry, refresh failure and empty states at ${width}px`, async ({ page }, info) => {
   await setup(page); await page.setViewportSize({ width, height: 900 });
@@ -84,11 +90,14 @@ for (const width of [320, 1440]) test(`loading, retry, refresh failure and empty
 });
 test("keyboard sorting and expanded ties are accessible", async ({ page }) => {
   await setup(page, true); await page.setViewportSize({ width: 1440, height: 900 }); await page.goto("/stats");
-  const wins = page.getByRole("button", { name: "Wins", exact: true });
-  await wins.focus(); await page.keyboard.press("Enter");
-  await expect(page.getByRole("columnheader", { name: /Wins/ })).toHaveAttribute("aria-sort", "descending");
+  const compare = page.getByLabel("Compare by");
+  await compare.focus(); await page.keyboard.press("w"); await page.keyboard.press("Enter");
+  await compare.selectOption("winValue");
+  const direction = page.getByRole("button", { name: "Descending", exact: true });
+  await direction.focus(); await page.keyboard.press("Enter");
+  await expect(page.getByRole("status").filter({ hasText: "Sorted by Wins" })).toContainText("ascending");
   await page.keyboard.press("Enter");
-  await expect(page.getByRole("columnheader", { name: /Wins/ })).toHaveAttribute("aria-sort", "ascending");
+  await expect(page.getByRole("status").filter({ hasText: "Sorted by Wins" })).toContainText("descending");
   const ties = page.getByText("+2 tied Teams", { exact: true }); await ties.focus(); await page.keyboard.press("Enter");
   await expect(page.getByRole("region", { name: "Tournament insight cards" }).getByText("Davies", { exact: false }).first()).toBeVisible();
 });
@@ -141,4 +150,50 @@ for (const width of [320, 1440]) test(`chart states and marker details at ${widt
   await page.screenshot({ path: info.outputPath(`chart-unavailable-${width}.png`), fullPage: true });
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   expect(errors).toEqual([]);
+});
+
+for (const signedIn of [false, true]) for (const width of [320, 375, 390, 768, 1024, 1440]) {
+  test(`${signedIn ? "owner" : "anonymous"} Pick roster at ${width}px`, async ({ page }, info) => {
+    const errors = await setup(page, signedIn); await page.setViewportSize({ width, height: 900 });
+    await page.goto("/users/iceking/tournaments/active");
+    const chart = page.getByRole("region", { name: "Pick roster chart" });
+    await expect(chart).toContainText("17 pts");
+    await expect(chart).toContainText(`50.0% of ${signedIn ? 'your' : 'this user’s'} total`);
+    await expect(chart.locator('svg')).toHaveCount(2);
+    expect(await chart.locator('li').first().evaluate(el => getComputedStyle(el).color)).not.toBe('rgb(0, 0, 0)');
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+    await page.screenshot({ path: info.outputPath(`roster-${signedIn ? "owner" : "anonymous"}-${width}.png`), fullPage: true });
+    expect(errors).toEqual([]);
+  });
+}
+for (const width of [320, 1440]) test(`roster upcoming, completed and unavailable states at ${width}px`, async ({ page }, info) => {
+  const ts = fixture(); const errors = await setup(page, true, ts); await page.setViewportSize({ width, height: 900 });
+  await page.goto("/users/iceking/tournaments/upcoming");
+  const chart = page.getByRole("region", { name: "Pick roster chart" });
+  await expect(chart).toContainText("4.25 pts/win"); await expect(chart).not.toContainText("50.0%");
+  await page.screenshot({ path: info.outputPath(`roster-upcoming-${width}.png`), fullPage: true });
+  await page.goto("/users/iceking/tournaments/completed"); await expect(chart).toContainText("17 pts");
+  await page.screenshot({ path: info.outputPath(`roster-completed-${width}.png`), fullPage: true });
+  ts[0].insights!.teams[0].fantasyPoints = null;
+  await page.goto("/users/iceking/tournaments/active"); await expect(chart).toContainText("Some Pick scores are unavailable");
+  await expect(chart.locator('svg')).toHaveCount(0);
+  await page.screenshot({ path: info.outputPath(`roster-unavailable-${width}.png`), fullPage: true });
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true); expect(errors).toEqual([]);
+});
+test("all comparison metrics, unavailable values, scale and direction", async ({ page }) => {
+  const ts = fixture(); ts[0].insights!.teams[0].fantasyPoints = 17; ts[0].insights!.teams[3].fantasyPoints = null;
+  await setup(page, true, ts); await page.goto('/stats');
+  const list = page.getByRole('list', { name: 'Team comparison' });
+  for (const [metric, text] of [['fantasyPoints','17 pts'], ['winValue','4 wins'], ['weightValue','4.25 pts/win'], ['pickCount','8 Picks'], ['ownershipPercentage','80.0%']]) {
+    await page.getByLabel('Compare by').selectOption(metric);
+    await expect(list.locator('li').first()).toContainText(text);
+    await expect(list.locator('li').first().locator('svg')).toHaveCount(1);
+    await page.getByRole('button', { name: 'Descending', exact: true }).click();
+    await expect(page.getByRole('status').filter({ hasText: 'Sorted by' })).toContainText('ascending');
+  }
+  await page.getByLabel('Compare by').selectOption('fantasyPoints');
+  await expect(list.locator('li').last()).toContainText('Unavailable');
+  await expect(list.locator('li').last().locator('svg')).toHaveCount(0);
+  await page.getByLabel('Search Teams').fill('brown');
+  await expect(list.locator('li svg rect').nth(1)).toHaveAttribute('width','50');
 });
