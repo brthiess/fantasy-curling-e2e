@@ -20,6 +20,9 @@ for (const signedIn of [false, true]) for (const width of [320, 375, 390, 768, 1
     await expect(page).toHaveURL(/tournamentId=active/);
     await expect(page.getByText("Percentage of 10 eligible entries", { exact: false })).toBeVisible();
     await expect(page.getByRole("table")).toHaveCount(width >= 1024 ? 1 : 0);
+    await expect(page.getByRole("heading", { name: "Fantasy points vs. ownership", exact: true })).toBeVisible();
+    await expect(page.getByRole("region", { name: "Tournament charts" }).getByRole("button")).toHaveCount(3);
+    await expect(page.getByRole("article", { name: "Your Picks contribution chart" })).toHaveCount(signedIn ? 1 : 0);
     if (signedIn) await expect(page.getByRole("heading", { name: "Your Tournament total: 17 pts" })).toBeVisible();
     else await expect(page.getByRole("link", { name: "Sign in", exact: true }).last()).toBeVisible();
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
@@ -85,4 +88,54 @@ test("keyboard sorting and expanded ties are accessible", async ({ page }) => {
   await expect(page.getByRole("columnheader", { name: /Wins/ })).toHaveAttribute("aria-sort", "ascending");
   const ties = page.getByText("+2 tied Teams", { exact: true }); await ties.focus(); await page.keyboard.press("Enter");
   await expect(page.getByRole("region", { name: "Tournament insight cards" }).getByText("Davies", { exact: false }).first()).toBeVisible();
+});
+
+test("chart markers support hover, keyboard and touch without following table filters", async ({ page, browser }) => {
+  await setup(page, true); await page.setViewportSize({ width: 1440, height: 900 }); await page.goto("/stats");
+  const chart = page.getByRole("article", { name: "Tournament overview chart" });
+  const tied = chart.getByRole("button", { name: /Campbell.*Davies/ });
+  await tied.hover(); await expect(chart.getByRole("status")).toContainText("Campbell");
+  await expect(chart.getByRole("status")).toContainText("Davies");
+  const personal = chart.getByRole("button", { name: /Brown.*Your Pick/ });
+  await personal.focus(); await page.keyboard.press("Enter");
+  await expect(personal).toHaveAttribute("aria-pressed", "true");
+  await expect(chart.getByRole("status")).toContainText("Your Pick");
+  await page.getByLabel("Search Teams").fill("no match");
+  await page.getByLabel("My Picks only").check();
+  await expect(chart.getByRole("button")).toHaveCount(3);
+  await expect(page.getByRole("article", { name: "Your Picks contribution chart" })).toContainText("17 pts");
+  await page.getByLabel("Tournament", { exact: true }).selectOption("upcoming");
+  await expect(chart.getByRole("heading", { name: "Team ownership", exact: true })).toBeVisible();
+  await expect(chart.getByRole("button")).toHaveCount(0);
+  await expect(page.getByText("Contributions appear when scoring starts.", { exact: true })).toBeVisible();
+  const context = await browser.newContext({ viewport: { width: 320, height: 900 }, hasTouch: true });
+  const touchPage = await context.newPage(); await setup(touchPage, true); await touchPage.goto("/stats");
+  const touchChart = touchPage.getByRole("article", { name: "Tournament overview chart" });
+  await touchChart.getByRole("button", { name: /Brown.*Your Pick/ }).tap();
+  await expect(touchChart.getByRole("status")).toContainText("Brown");
+  await touchChart.getByRole("button", { name: /Campbell.*Davies/ }).tap();
+  await expect(touchChart.getByRole("status")).toContainText("Davies"); await context.close();
+});
+
+for (const width of [320, 1440]) test(`chart states and marker details at ${width}px`, async ({ page }, info) => {
+  const errors = await setup(page, true); await page.setViewportSize({ width, height: 900 }); await page.goto("/stats");
+  const chart = page.getByRole("article", { name: "Tournament overview chart" });
+  await chart.getByRole("button", { name: /Campbell.*Davies/ }).click();
+  await expect(chart.getByRole("status")).toContainText("Unpicked");
+  await page.evaluate(() => window.scrollTo({ top: 0, behavior: "instant" }));
+  await page.screenshot({ path: info.outputPath(`chart-overlap-${width}.png`), fullPage: true });
+  await page.getByLabel("Tournament", { exact: true }).selectOption("completed");
+  await expect(page.getByRole("heading", { name: "Fantasy points vs. ownership", exact: true })).toBeVisible();
+  await page.evaluate(() => window.scrollTo({ top: 0, behavior: "instant" }));
+  await page.screenshot({ path: info.outputPath(`chart-completed-${width}.png`), fullPage: true });
+  await page.getByLabel("Tournament", { exact: true }).selectOption("upcoming");
+  await page.evaluate(() => window.scrollTo({ top: 0, behavior: "instant" }));
+  await page.screenshot({ path: info.outputPath(`chart-upcoming-${width}.png`), fullPage: true });
+  const ts = fixture(); ts[0].insights!.teams.forEach(row => { row.fantasyPoints = null; row.ownershipPercentage = null; });
+  await setup(page, true, ts); await page.goto("/stats?tournamentId=active");
+  await expect(chart).toContainText("No Teams have both scoring and ownership");
+  await expect(page.getByRole("article", { name: "Your Picks contribution chart" })).toHaveCount(0);
+  await page.screenshot({ path: info.outputPath(`chart-unavailable-${width}.png`), fullPage: true });
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  expect(errors).toEqual([]);
 });
