@@ -33,8 +33,11 @@ for (const signedIn of [false, true]) for (const width of [320, 375, 390, 768, 1
 test("combined filters, sorting, contributions, selector and history", async ({ page }) => {
   await setup(page, true); await page.setViewportSize({ width: 390, height: 900 }); await page.goto("/stats?extra=kept");
   await expect(page.getByText("Showing 4 of 4 Teams")).toBeVisible();
+  const firstScoreBar = page.getByRole('region',{name:'Team performance'}).locator('ul > li').first().locator('svg rect').nth(1);
+  await expect(firstScoreBar).toHaveAttribute('width','100');
   await page.getByLabel("My Picks only").check(); await expect(page.getByText("Showing 2 of 4 Teams")).toBeVisible();
   await page.getByLabel("Search Teams").fill("  brown  "); await expect(page.getByText("Showing 1 of 4 Teams")).toBeVisible();
+  await expect(firstScoreBar).toHaveAttribute('width','100');
   await expect(page.getByText("Your contribution: 8.5 pts", { exact: false })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Your Tournament total: 17 pts" })).toBeVisible();
   await page.getByLabel("Pool", { exact: true }).selectOption("B"); await expect(page.getByText("No Teams match your filters.", { exact: false })).toBeVisible();
