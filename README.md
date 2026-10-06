@@ -2,6 +2,18 @@
 
 Standalone, deterministic Playwright integration/E2E repository for the fantasy curling platform.
 
+## Career UI flow
+
+Run `npm run test:e2e:career` for the isolated career/profile/recap browser tests.
+This starts the local frontend on port 5187 and mocks API/auth responses; it needs
+neither MongoDB nor production credentials. Backend calculations and API behavior
+are covered separately by the backend Jest tests.
+
+If Playwright's browser is unavailable, set `E2E_BROWSER_CHANNEL=msedge` to use
+installed Edge. Desktop/mobile screenshots are saved under `test-results/career`.
+The flow covers signing in, the dashboard career link, filters, a completed recap,
+clipboard sharing, and anonymous access to a direct public recap link.
+
 ## What this repository provides
 
 - Fresh isolated MongoDB per run via Testcontainers (no shared DB state).
