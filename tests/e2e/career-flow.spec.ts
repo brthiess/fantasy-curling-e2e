@@ -144,7 +144,7 @@ test("anonymous public profile and recap fit desktop and mobile", async ({ page 
   await page.screenshot({ path: testInfo.outputPath("career-desktop.png"), fullPage: true });
   await page.getByRole("combobox", { name: "View" }).selectOption("2025-2026");
   await expect(page.getByText("No completed tournaments this season.")).toBeVisible();
-  await expect(page.getByRole("heading", { name: "First Win", exact: true })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Win Tournament", exact: true })).toBeVisible();
   await page.getByRole("combobox", { name: "View" }).selectOption("career");
   await page.setViewportSize({ width: 390, height: 844 });
   await page.screenshot({ path: testInfo.outputPath("career-mobile.png"), fullPage: true });
@@ -205,5 +205,5 @@ test("long completed history retains all results and filters by season", async (
   await page.getByRole('combobox', { name: 'View' }).selectOption('2025-2026');
   await expect(results.getByRole('listitem')).toHaveCount(6);
   await expect(results.getByRole('listitem').first()).toContainText('Invitational 2020');
-  await expect(page.getByText('First Win', { exact: true })).toBeVisible();
+  await expect(page.getByText('Win Tournament', { exact: true })).toBeVisible();
 });
