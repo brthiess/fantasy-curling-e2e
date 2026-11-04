@@ -27,15 +27,15 @@ for (const signedIn of [false, true]) for (const width of [320, 375, 390, 768, 1
     await expect(page).toHaveURL(/tournamentId=active/);
     await expect(page.getByText("Percentage of 10 eligible entries", { exact: false })).toHaveCount(0);
     await expect(page.getByRole("region", { name: "Tournament status and freshness" })).toHaveCount(0);
-    await expect(page.getByRole("region", { name: "Your Picks summary" })).toHaveCount(0);
+    await expect(page.getByRole("region", { name: "Your picks summary" })).toHaveCount(0);
     await expect(page.getByText("Data may be cached", { exact: false })).toHaveCount(0);
     await expect(page.getByText("Filters do not change the scale", { exact: false })).toHaveCount(0);
     await expect(page.getByText("All your saved Picks", { exact: false })).toHaveCount(0);
     await expect(page.getByRole("table")).toHaveCount(0);
     await expect(page.getByRole("heading", { name: "Fantasy points vs. ownership", exact: true })).toBeVisible();
     await expect(page.getByRole("region", { name: "Tournament charts" }).getByRole("button")).toHaveCount(3);
-    await expect(page.getByRole("article", { name: "Your Picks contribution chart" })).toHaveCount(signedIn ? 1 : 0);
-    if (signedIn) await expect(page.getByRole("article", { name: "Your Picks contribution chart" })).toContainText("50.0% of your total");
+    await expect(page.getByRole("article", { name: "Your picks contribution chart" })).toHaveCount(signedIn ? 1 : 0);
+    if (signedIn) await expect(page.getByRole("article", { name: "Your picks contribution chart" })).toContainText("50.0% of your total");
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
     await page.screenshot({ path: info.outputPath(`stats-${signedIn ? "signed-in" : "anonymous"}-${width}.png`), fullPage: true });
     expect(errors).toEqual([]);
@@ -43,15 +43,15 @@ for (const signedIn of [false, true]) for (const width of [320, 375, 390, 768, 1
 }
 test("combined filters, sorting, contributions, selector and history", async ({ page }) => {
   await setup(page, true); await page.setViewportSize({ width: 390, height: 900 }); await page.goto("/stats?extra=kept");
-  await expect(page.getByText("Showing 4 of 4 Teams")).toBeVisible();
+  await expect(page.getByText("Showing 4 of 4 teams")).toBeVisible();
   const firstScoreBar = page.getByRole('region',{name:'Team performance'}).locator('ul > li').first().locator('svg rect').nth(1);
   await expect(firstScoreBar).toHaveAttribute('width','100');
-  await page.getByLabel("My Picks only").check(); await expect(page.getByText("Showing 2 of 4 Teams")).toBeVisible();
-  await page.getByLabel("Search Teams").fill("  brown  "); await expect(page.getByText("Showing 1 of 4 Teams")).toBeVisible();
+  await page.getByLabel("My picks only").check(); await expect(page.getByText("Showing 2 of 4 teams")).toBeVisible();
+  await page.getByLabel("Search teams").fill("  brown  "); await expect(page.getByText("Showing 1 of 4 teams")).toBeVisible();
   await expect(firstScoreBar).toHaveAttribute('width','100');
   await expect(page.getByRole("list", { name: "Team comparison" })).not.toContainText("Your contribution");
-  await expect(page.getByRole("article", { name: "Your Picks contribution chart" })).toContainText("50.0% of your total");
-  await page.getByLabel("Pool", { exact: true }).selectOption("B"); await expect(page.getByText("No Teams match your filters.", { exact: false })).toBeVisible();
+  await expect(page.getByRole("article", { name: "Your picks contribution chart" })).toContainText("50.0% of your total");
+  await page.getByLabel("Pool", { exact: true }).selectOption("B"); await expect(page.getByText("No teams match your filters.", { exact: false })).toBeVisible();
   await page.getByRole("button", { name: "Clear filters" }).click();
   await page.getByLabel("Compare by").selectOption("pickCount"); await page.getByRole("button", { name: "Descending" }).click();
   await page.getByLabel("Tournament", { exact: true }).selectOption("upcoming");
@@ -59,7 +59,7 @@ test("combined filters, sorting, contributions, selector and history", async ({ 
   await expect(page).toHaveURL(/extra=kept/);
   await page.reload(); await expect(page.getByLabel("Tournament", { exact: true })).toHaveValue("upcoming");
   await page.goBack(); await expect(page.getByLabel("Tournament", { exact: true })).toHaveValue("active");
-  await expect(page.getByLabel("Search Teams")).toHaveValue("");
+  await expect(page.getByLabel("Search teams")).toHaveValue("");
   await page.setViewportSize({ width: 1024, height: 900 });
   await page.getByLabel("Compare by").selectOption("winValue");
   await expect(page.getByRole("status").filter({ hasText: "Sorted by Wins" })).toContainText("descending");
@@ -75,13 +75,13 @@ for (const width of [320, 1440]) test(`loading, retry and empty states at ${widt
   await expect(page.getByRole("alert")).toContainText("could not be loaded");
   await page.screenshot({ path: info.outputPath(`error-${width}.png`), fullPage: true });
   await page.unroute("**/api/current-user"); await setup(page); await page.getByRole("button", { name: "Try again" }).click();
-  await expect(page.getByText("Showing 4 of 4 Teams")).toBeVisible();
+  await expect(page.getByText("Showing 4 of 4 teams")).toBeVisible();
   await page.unroute("**/api/current-user"); const ts = fixture(); ts[0].insights!.eligibleEntryCount = 0;
   ts[0].insights!.teams.forEach(t => { t.pickCount = 0; t.ownershipPercentage = null; });
   await setup(page, false, ts); await page.reload();
   await expect(page.getByText("No eligible entries yet.", { exact: false })).toBeVisible();
   await page.screenshot({ path: info.outputPath(`zero-entries-${width}.png`), fullPage: true });
-  await page.getByLabel("Search Teams").fill("no match");
+  await page.getByLabel("Search teams").fill("no match");
   await page.evaluate(() => window.scrollTo({ top: 0, behavior: "instant" }));
   await page.screenshot({ path: info.outputPath(`no-match-${width}.png`), fullPage: true });
   await page.getByLabel("Tournament", { exact: true }).selectOption("upcoming");
@@ -99,7 +99,7 @@ test("keyboard sorting and expanded ties are accessible", async ({ page }) => {
   await expect(page.getByRole("status").filter({ hasText: "Sorted by Wins" })).toContainText("ascending");
   await page.keyboard.press("Enter");
   await expect(page.getByRole("status").filter({ hasText: "Sorted by Wins" })).toContainText("descending");
-  const ties = page.getByText("+2 tied Teams", { exact: true }); await ties.focus(); await page.keyboard.press("Enter");
+  const ties = page.getByRole('region', { name: 'Tournament insight cards' }).locator('summary').first(); await ties.focus(); await page.keyboard.press("Enter");
   await expect(page.getByRole("region", { name: "Tournament insight cards" }).getByText("Davies", { exact: false }).first()).toBeVisible();
 });
 
@@ -109,22 +109,22 @@ test("chart markers support hover, keyboard and touch without following table fi
   const tied = chart.getByRole("button", { name: /Campbell.*Davies/ });
   await tied.hover(); await expect(chart.getByRole("status")).toContainText("Campbell");
   await expect(chart.getByRole("status")).toContainText("Davies");
-  const personal = chart.getByRole("button", { name: /Brown.*Your Pick/ });
+  const personal = chart.getByRole("button", { name: /Brown.*Your pick/ });
   await personal.focus(); await page.keyboard.press("Enter");
   await expect(personal).toHaveAttribute("aria-pressed", "true");
-  await expect(chart.getByRole("status")).toContainText("Your Pick");
-  await page.getByLabel("Search Teams").fill("no match");
-  await page.getByLabel("My Picks only").check();
+  await expect(chart.getByRole("status")).toContainText("Your pick");
+  await page.getByLabel("Search teams").fill("no match");
+  await page.getByLabel("My picks only").check();
   await expect(chart.getByRole("button")).toHaveCount(3);
-  await expect(page.getByRole("article", { name: "Your Picks contribution chart" })).toContainText("50.0% of your total");
+  await expect(page.getByRole("article", { name: "Your picks contribution chart" })).toContainText("50.0% of your total");
   await page.getByLabel("Tournament", { exact: true }).selectOption("upcoming");
   await expect(chart.getByRole("heading", { name: "Team ownership", exact: true })).toBeVisible();
   await expect(chart.getByRole("button")).toHaveCount(0);
-  await expect(page.getByRole("article", { name: "Your Picks contribution chart" })).toHaveCount(0);
+  await expect(page.getByRole("article", { name: "Your picks contribution chart" })).toHaveCount(0);
   const context = await browser.newContext({ viewport: { width: 320, height: 900 }, hasTouch: true });
   const touchPage = await context.newPage(); await setup(touchPage, true); await touchPage.goto("/stats");
   const touchChart = touchPage.getByRole("article", { name: "Tournament overview chart" });
-  await touchChart.getByRole("button", { name: /Brown.*Your Pick/ }).tap();
+  await touchChart.getByRole("button", { name: /Brown.*Your pick/ }).tap();
   await expect(touchChart.getByRole("status")).toContainText("Brown");
   await touchChart.getByRole("button", { name: /Campbell.*Davies/ }).tap();
   await expect(touchChart.getByRole("status")).toContainText("Davies"); await context.close();
@@ -146,8 +146,8 @@ for (const width of [320, 1440]) test(`chart states and marker details at ${widt
   await page.screenshot({ path: info.outputPath(`chart-upcoming-${width}.png`), fullPage: true });
   const ts = fixture(); ts[0].insights!.teams.forEach(row => { row.fantasyPoints = null; row.ownershipPercentage = null; });
   await setup(page, true, ts); await page.goto("/stats?tournamentId=active");
-  await expect(chart).toContainText("No Teams have both scoring and ownership");
-  await expect(page.getByRole("article", { name: "Your Picks contribution chart" })).toHaveCount(0);
+  await expect(chart).toContainText("No teams have both scoring and ownership");
+  await expect(page.getByRole("article", { name: "Your picks contribution chart" })).toHaveCount(0);
   await page.screenshot({ path: info.outputPath(`chart-unavailable-${width}.png`), fullPage: true });
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   expect(errors).toEqual([]);
@@ -185,7 +185,7 @@ test("all comparison metrics, unavailable values, scale and direction", async ({
   const ts = fixture(); ts[0].insights!.teams[0].fantasyPoints = 17; ts[0].insights!.teams[3].fantasyPoints = null;
   await setup(page, true, ts); await page.goto('/stats');
   const list = page.getByRole('list', { name: 'Team comparison' });
-  for (const [metric, text] of [['fantasyPoints','17 pts'], ['winValue','4 wins'], ['weightValue','4.25 pts/win'], ['pickCount','8 Picks'], ['ownershipPercentage','80.0%']]) {
+  for (const [metric, text] of [['fantasyPoints','17 pts'], ['winValue','4 wins'], ['weightValue','4.25 pts/win'], ['pickCount','8 picks'], ['ownershipPercentage','80.0%']]) {
     await page.getByLabel('Compare by').selectOption(metric);
     await expect(list.locator('li').first()).toContainText(text);
     await expect(list.locator('li').first().locator('svg')).toHaveCount(1);
@@ -195,6 +195,6 @@ test("all comparison metrics, unavailable values, scale and direction", async ({
   await page.getByLabel('Compare by').selectOption('fantasyPoints');
   await expect(list.locator('li').last()).toContainText('Unavailable');
   await expect(list.locator('li').last().locator('svg')).toHaveCount(0);
-  await page.getByLabel('Search Teams').fill('brown');
+  await page.getByLabel('Search teams').fill('brown');
   await expect(list.locator('li svg rect').nth(1)).toHaveAttribute('width','50');
 });
